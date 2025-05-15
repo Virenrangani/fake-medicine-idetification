@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { Search, Upload, Loader2 } from "lucide-react";
@@ -15,6 +14,7 @@ const PillIdentifier = () => {
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
+  const fileInputRef = useRef(null);
 
   const handleSearch = () => {
     if (!searchParams.color && !searchParams.shape && !searchParams.imprint) {
@@ -47,7 +47,7 @@ const PillIdentifier = () => {
       ];
       setResults(mockResults);
       setIsLoading(false);
-      
+
       toast({
         title: "Search Complete",
         description: `Found ${mockResults.length} matching medications`,
@@ -59,7 +59,7 @@ const PillIdentifier = () => {
     const file = event.target.files[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
+    if (!file.type.startsWith("image/")) {
       toast({
         title: "Invalid file type",
         description: "Please upload an image file",
@@ -119,7 +119,9 @@ const PillIdentifier = () => {
           <input
             type="text"
             value={searchParams.color}
-            onChange={(e) => setSearchParams({ ...searchParams, color: e.target.value })}
+            onChange={(e) =>
+              setSearchParams({ ...searchParams, color: e.target.value })
+            }
             className="w-full p-2 border rounded focus:ring-2 focus:ring-primary/50"
             placeholder="e.g., White, Blue, Yellow"
           />
@@ -129,7 +131,9 @@ const PillIdentifier = () => {
           <label className="block text-sm font-medium mb-1">Shape</label>
           <select
             value={searchParams.shape}
-            onChange={(e) => setSearchParams({ ...searchParams, shape: e.target.value })}
+            onChange={(e) =>
+              setSearchParams({ ...searchParams, shape: e.target.value })
+            }
             className="w-full p-2 border rounded focus:ring-2 focus:ring-primary/50"
           >
             <option value="">Select Shape</option>
@@ -147,17 +151,15 @@ const PillIdentifier = () => {
           <input
             type="text"
             value={searchParams.imprint}
-            onChange={(e) => setSearchParams({ ...searchParams, imprint: e.target.value })}
+            onChange={(e) =>
+              setSearchParams({ ...searchParams, imprint: e.target.value })
+            }
             className="w-full p-2 border rounded focus:ring-2 focus:ring-primary/50"
             placeholder="Enter any numbers or letters on the pill"
           />
         </div>
 
-        <Button 
-          onClick={handleSearch} 
-          className="w-full" 
-          disabled={isLoading}
-        >
+        <Button onClick={handleSearch} className="w-full" disabled={isLoading}>
           {isLoading ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
           ) : (
@@ -174,14 +176,18 @@ const PillIdentifier = () => {
               accept="image/*"
               onChange={handleImageUpload}
               className="hidden"
-              id="pill-image"
+              ref={fileInputRef}
             />
-            <label htmlFor="pill-image">
-              <Button variant="outline" className="mt-2 w-full cursor-pointer">
-                <Upload className="h-4 w-4 mr-2" />
-                Upload Pill Image
-              </Button>
-            </label>
+            <Button
+              variant="outline"
+              className="mt-2 w-full cursor-pointer"
+              onClick={() =>
+                fileInputRef.current && fileInputRef.current.click()
+              }
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Upload Pill Image
+            </Button>
           </div>
         </div>
       </div>
@@ -201,7 +207,8 @@ const PillIdentifier = () => {
                 <span className="font-medium">Dosage:</span> {result.dosage}
               </div>
               <div>
-                <span className="font-medium">Manufacturer:</span> {result.manufacturer}
+                <span className="font-medium">Manufacturer:</span>{" "}
+                {result.manufacturer}
               </div>
             </div>
           </motion.div>

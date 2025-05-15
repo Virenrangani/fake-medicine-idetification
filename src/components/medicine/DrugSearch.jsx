@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
@@ -35,7 +34,7 @@ const DrugSearch = () => {
     },
   ];
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     if (!searchTerm.trim()) {
       toast({
         title: "Search term required",
@@ -48,32 +47,77 @@ const DrugSearch = () => {
     setIsLoading(true);
     setSelectedDrug(null);
 
-    // Simulate API call
-    setTimeout(() => {
-      const results = mockDrugDatabase.filter(drug =>
-        drug.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      
-      setSearchResults(results);
+    // Local search first
+    const localResults = mockDrugDatabase.filter((drug) =>
+      drug.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    if (localResults.length > 0) {
+      setSearchResults(localResults);
       setIsLoading(false);
-      
-      if (results.length === 0) {
+      toast({
+        title: "Search Complete",
+        description: `Found ${localResults.length} matching medications (local)`,
+      });
+      return;
+    }
+
+    // If not found locally, search OpenFDA API
+    try {
+      const response = await fetch(
+        `https://api.fda.gov/drug/label.json?search=openfda.brand_name:${encodeURIComponent(
+          searchTerm
+        )}&limit=10`
+      );
+      const data = await response.json();
+
+      if (!data.results || data.results.length === 0) {
+        setSearchResults([]);
         toast({
           title: "No results found",
           description: "Try searching with a different term",
           variant: "destructive",
         });
       } else {
+        // Map API data to your UI format
+        const results = data.results.map((item, idx) => ({
+          id: `api-${idx}`,
+          name: item.openfda?.brand_name
+            ? item.openfda.brand_name[0]
+            : "Unknown",
+          description: item.description
+            ? item.description[0]
+            : "No description available.",
+          category: item.openfda?.product_type
+            ? item.openfda.product_type[0]
+            : "Unknown",
+          usedFor: item.indications_and_usage || ["No usage info."],
+          sideEffects: item.adverse_reactions || ["No side effect info."],
+          dosage: item.dosage_and_administration
+            ? item.dosage_and_administration[0]
+            : "No dosage info.",
+          warnings: item.warnings || ["No warnings."],
+        }));
+        setSearchResults(results);
         toast({
           title: "Search Complete",
-          description: `Found ${results.length} matching medications`,
+          description: `Found ${results.length} matching medications (API)`,
         });
       }
-    }, 1500);
+    } catch (error) {
+      setSearchResults([]);
+      toast({
+        title: "API Error",
+        description: "Could not fetch data from the API.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       handleSearch();
     }
   };
@@ -115,13 +159,15 @@ const DrugSearch = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className={`p-4 border rounded-lg cursor-pointer transition-all ${
-              selectedDrug?.id === drug.id ? 'ring-2 ring-primary' : 'hover:shadow-md'
+              selectedDrug?.id === drug.id
+                ? "ring-2 ring-primary"
+                : "hover:shadow-md"
             }`}
             onClick={() => setSelectedDrug(drug)}
           >
             <h3 className="text-lg font-medium">{drug.name}</h3>
             <p className="text-gray-600">{drug.description}</p>
-            
+
             {selectedDrug?.id === drug.id && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
@@ -132,22 +178,30 @@ const DrugSearch = () => {
                   <h4 className="font-medium">Category</h4>
                   <p className="text-gray-600">{drug.category}</p>
                 </div>
-                
+
                 <div>
                   <h4 className="font-medium">Used For</h4>
                   <ul className="list-disc list-inside text-gray-600">
-                    {drug.usedFor.map((use, index) => (
-                      <li key={index}>{use}</li>
-                    ))}
+                    {Array.isArray(drug.usedFor) ? (
+                      drug.usedFor.map((use, index) => (
+                        <li key={index}>{use}</li>
+                      ))
+                    ) : (
+                      <li>{drug.usedFor}</li>
+                    )}
                   </ul>
                 </div>
 
                 <div>
                   <h4 className="font-medium">Side Effects</h4>
                   <ul className="list-disc list-inside text-gray-600">
-                    {drug.sideEffects.map((effect, index) => (
-                      <li key={index}>{effect}</li>
-                    ))}
+                    {Array.isArray(drug.sideEffects) ? (
+                      drug.sideEffects.map((effect, index) => (
+                        <li key={index}>{effect}</li>
+                      ))
+                    ) : (
+                      <li>{drug.sideEffects}</li>
+                    )}
                   </ul>
                 </div>
 
@@ -162,9 +216,13 @@ const DrugSearch = () => {
                     <h4 className="font-medium text-yellow-600">Warnings</h4>
                   </div>
                   <ul className="list-disc list-inside text-yellow-600 mt-1">
-                    {drug.warnings.map((warning, index) => (
-                      <li key={index}>{warning}</li>
-                    ))}
+                    {Array.isArray(drug.warnings) ? (
+                      drug.warnings.map((warning, index) => (
+                        <li key={index}>{warning}</li>
+                      ))
+                    ) : (
+                      <li>{drug.warnings}</li>
+                    )}
                   </ul>
                 </div>
               </motion.div>
